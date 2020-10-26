@@ -1,0 +1,68 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: backend-frontend
+
+---
+apiVersion: v1
+data:
+  PGHOST: "3.80.157.220"
+  PGUSER: "rivaldi"
+  PGDATABASE: "mainDB"
+  PGPASSWORD: "root"
+  PGPORT: "5432"
+  SERVICEPORT: "4500"
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: "aldi1234"  
+
+kind: ConfigMap
+metadata:
+  name: pos-backend
+  namespace: backend-frontend
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pos-backend
+  namespace: backend-frontend
+spec:
+  selector:
+    matchLabels:
+      app: pos-backend
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: user-services
+    spec:
+      containers:
+        - name: user-service
+          image: aldifarzum/dockerpos-backend:v1.0.0.2
+          ports:
+            - containerPort: 4500
+          envFrom:
+            - configMapRef:
+                name: test-service
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pos-backend
+  namespace: backend-frontend
+  labels:
+    app: user-services
+spec:
+  selector:
+    app: user-services
+  # type: LoadBalancer
+  # type: ClusterIP
+  type: NodePort
+  ports:
+    - port: 8080
+      targetPort: 4500
+      nodePort: 30881
+      protocol: TCP
+      name: serviceport
