@@ -15,11 +15,7 @@ pipeline {
         stage('Build Docker Images') {
             steps {
                 script {
-                    if (params.Mode == GIT_BRANCH) {
-                        script {
-                            CommitHash = sh(script: "git log -n 1 --pretty=format:'%H'", returnStdout: true)
-                            builderDocker = docker.build("aldifarzum/dockerpos-frontend:v1.0.0.1")
-                        }
+                    if (params.Mode == GIT_BRANCH) {                        
                         sh 'echo Validasi branch berhasil'
                     } else if (params.Mode != GIT_BRANCH) {
                         currentBuild.result = 'ABORTED'
@@ -36,48 +32,40 @@ pipeline {
                 }
             }
             steps {
-                script {
-                    builderDocker.inside {
-                        sh 'echo passed'
-                    }
-                }
+                sh 'RUNTES PASSED'
             }
         }
-
-        stage('Push Image') {
-            when {
-                expression {
-                    params.RUNTEST
-                }
-            }
-            steps {
-                script {
-                    builderDocker.push("v1.0.0.1")
-                }
-            }
-        }
-
-
-
-        stage('Deploy-deployement') {
+        
+        stage("Execute yml file"){
             when {
                 expression {
                     params.CICD == 'CICD'
                 }
             }
+            
             steps {
                 script{
-                    sh 'echo Image already push to dockerhub'
+                    if (params.Deploy == 'deployement') {
+                        sshPublisher(
+                            publishers: [
+                                sshPublisherDesc(
+                                    configName: 'k8s-controll',
+                                    verbose: false,
+                                    transfers: [
+                                        sshTransfer(
+                                            execCommand: 'kubectl delete -n backend-frontend deployment.apps/pos-frontend; kubectl delete -n backend-frontend deployment.apps/pos-backend; kubectl delete -n backend-frontend service/pos-frontend; kubectl delete -n backend-frontend service/pos-backend; kubectl apply -f backend-dep.yml',
+                                            execTimeout: 250000,
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+                    }
                 }
+                echo 'apply succes.'
             }
         }
 
-        stage('Remove local images') {
-            steps {
-                script{
-                sh("docker rmi -f aldifarzum/dockerpos-frontend:v1.0.0.1 || :")        
-            }      
-            }                  
-        }
+        
     }
 }
